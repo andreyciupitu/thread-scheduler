@@ -1,50 +1,37 @@
-#
-#  4 - Thread Scheduler (Linux)
-#
-#  2017, Operating Systems
-#
+Tema #4 SO
+Ciupitu Andrei-Valentin, 332CC
 
-# Archive:
+------------------------- Detalii de implementare -----------------------------
 
-> Makefile.checker
-> README
-> run_all.sh
-> _test/
-	> run_test,c
-	> run_test.h
-	> scheduler_test.h
-	> so_scheduler.h
-	> test_exec.c
-	> test_io.c
-	> test_sched.c
+Pentru implementarea scheduler-ului am folosit un vector pentru a retine
+thread-urile pornite, precum si o coada de prioritati pentru a alege urmatorul
+thread.
 
-# Build:
+Coada de prioritati am implementat-o printr-un vector sortat, in care
+thread-urile sunt retinute in ordinea crescatoare a prioritatilor, astfel
+incat thread-ul cu cea mai mare prioritate se afla la coada vectorului.
 
-The local directory must contain the thread scheduler library
-(libscheduler.so). Use the Makefile.checker to properly build the run_test
-executable:
+Atunci cand un thread este planificat el este scos din coada de prioritati,
+iar thread-ul care a fost preemptat este readaugat in coada, daca nu s-a blocat
+sau terminat.
 
-	make -f Makefile.checker
+Pentru sincronizarea thread-urilor, fiecare thread are asociat un semafor,
+folosit pentru a semnaliza daca thread-ul poate rula.
 
-This command will also run all tests and print out the results.
+La apelul so_fork, se aloca o noua structura thread si se porneste un nou
+thread. Se adauga apoi noul thread in coada de prioritati, si se apeleaza
+functia de update a scheduler-ului. Thread-ul nou asteapta la semaforul
+corespunzator permisiunea de a rula, pentru a apela handler-ul.
 
-# Run:
+La apelul so_exec se scade tumpul ramas si apoi se apeleaza scheduler-ul.
+Thread-ul va astepta apoi la semaforul propriu permisiunea de a rula.
 
-In order to run the test suite you can either use the run_all.sh script or
-the run_test executable. The loader must be able to locate the library
-(libscheduler.so) (use LD_LIBRARY_PATH).
+La so_wait se seteaza statusul thread-ului ca blocat si apoi se apeleaza
+scheduler-ul si se asteapta la semafor.
 
-The run_all.sh script runs all tests and computes assignment grade (95 points
-maximum):
+La so_signal se cauta in vectorul de thread-uri toate thread-urile care
+asteapta la device-ul dat ca argument. Acestea sunt trecute in starea READY si
+adaugate in coada. Se apeleaza apoi scheduler-ul si se asteapta la semafor.
 
-	LD_LIBRARY_PATH=. ./run_all.sh
-
-In order to run a specific test, pass the test number (1 .. 20) to the run_test
-executable:
-
-	LD_LIBRARY_PATH=. ./_test/run_test 1
-
-# Debug:
-
-For debugging, define the SO_VERBOSE_ERROR symbol.
-
+La apelul so_end se asteapta mai intai ca toate thread-urile sa treaca in
+starea TERMINATED, si apoi se da join si se elibereaza memoria.
